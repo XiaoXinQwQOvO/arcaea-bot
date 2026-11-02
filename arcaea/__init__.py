@@ -176,7 +176,7 @@ async def b50_handler(matcher: Matcher, event):
     try:
         scores = await _play_scores(user["user_id"])
         data = build_b50_data(
-            user["info"], scores, int(__import__("arcaea.settings", fromlist=["_config"])._config.arcaea_b50_count)
+            user["info"], scores, settings.get_b50_count()
         )
         image = await _render("b50", data)
     except (api.ApiError, ArcaeaError, RenderError) as exc:
