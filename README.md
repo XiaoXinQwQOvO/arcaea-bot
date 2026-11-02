@@ -84,9 +84,9 @@ arcaea-bot/
 
 ## 部署（雨云云应用）
 
-1. 推送本仓库，GitHub Actions 自动构建 `xiaoxinqwqovo/arcaea-bot:1.0.3`
+1. 推送本仓库，GitHub Actions 自动构建 `xiaoxinqwqovo/arcaea-bot:1.0.4`
    （需在仓库 Secrets 添加 `DOCKERHUB_USERNAME` / `DOCKERHUB_TOKEN`）。
-2. 云应用模板：镜像 `xiaoxinqwqovo/arcaea-bot:1.0.3`，最低 1 核 / 1024MB
+2. 云应用模板：镜像 `xiaoxinqwqovo/arcaea-bot:1.0.4`，最低 1 核 / 1024MB
    （本地 Chromium 渲染），无需入站端口（WebSocket 出站）。
 3. 环境变量：把 `.env.example` 里的内容按实际填写，
    `QQ_APPID` / `QQ_SECRET` 填自己的机器人 AppID 和 AppSecret，

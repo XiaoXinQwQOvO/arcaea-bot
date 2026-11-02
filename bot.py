@@ -12,7 +12,7 @@ if _appid and _secret and not os.getenv("QQ_BOTS"):
     os.environ["QQ_BOTS"] = json.dumps(
         [
             {
-                "appid": _appid,
+                "id": _appid,
                 "secret": _secret,
                 "intent": {"c2c_group_at_messages": True},
             }
