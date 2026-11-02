@@ -7,7 +7,7 @@ import random
 import re
 from typing import Any
 
-from nonebot import get_driver, on_alconna
+from nonebot import get_driver
 from nonebot.adapters.qq import Message, MessageSegment
 from nonebot.log import logger
 from nonebot.matcher import Matcher

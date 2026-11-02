@@ -2,10 +2,13 @@ import json
 import os
 
 import nonebot
+import httpx
+from nonebot.log import logger
 
 # QQ 适配器需要 HTTP 客户端 + WebSocket 客户端驱动；
 # 不依赖雨云面板是否填了 DRIVER。
-os.environ.setdefault("DRIVER", "~aiohttp")
+if not os.getenv("DRIVER", "").strip():
+    os.environ["DRIVER"] = "~aiohttp"
 from nonebot.adapters.qq import Adapter as QQAdapter
 
 # QQ 官方机器人只填 AppID + AppSecret 两个短环境变量，
@@ -29,5 +32,22 @@ driver = nonebot.get_driver()
 driver.register_adapter(QQAdapter)
 nonebot.load_plugin("arcaea")
 
+def _log_public_ip() -> None:
+    for url in (
+        "https://api.ipify.org",
+        "https://ifconfig.me/ip",
+        "https://ipv4.icanhazip.com",
+    ):
+        try:
+            ip = httpx.get(url, timeout=5, trust_env=False).text.strip()
+        except Exception:
+            continue
+        if ip:
+            logger.info(f"公网出口 IP：{ip} —— 请加入 QQ 开放平台 IP 白名单")
+            return
+    logger.warning("获取公网出口 IP 失败，请手动查询并加入 QQ 开放平台白名单")
+
+
 if __name__ == "__main__":
+    _log_public_ip()
     nonebot.run()
