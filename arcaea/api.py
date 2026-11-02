@@ -98,7 +98,10 @@ async def fetch_user(user_id: int):
 
 
 async def fetch_best_scores(user_id: int, limit: int = 60) -> list[dict[str, Any]]:
-    return await _get(f"/users/{user_id}/best", {"limit": limit})
+    raw = await _get(f"/users/{user_id}/best", {"limit": limit})
+    if isinstance(raw, dict):
+        raw = raw.get("data") or []
+    return raw or []
 
 
 async def fetch_leaderboard(song_id: str, difficulty: int, limit: int = 10) -> list:

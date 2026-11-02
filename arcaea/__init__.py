@@ -14,7 +14,7 @@ from nonebot.matcher import Matcher
 from arclet.alconna import AllParam
 from nonebot_plugin_alconna import Alconna, Args, Arparma, on_alconna
 
-from . import api, binds
+from . import api, binds, settings
 from .data_source import (
     ArcaeaError,
     build_b50_data,
@@ -74,6 +74,8 @@ async def _play_scores(user_id: int):
     catalog = load_catalog()
     scores = []
     for item in await api.fetch_best_scores(user_id, 60):
+        if not isinstance(item, dict):
+            continue
         chart = catalog.by_key.get(
             (str(item["song_id"]), int(item["difficulty"]))
         )
