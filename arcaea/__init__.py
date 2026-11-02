@@ -68,7 +68,7 @@ async def _user_info(matcher: Matcher, event) -> dict:
     return {"user_id": bind["user_id"], "user_code": bind["user_code"], "info": info}
 
 
-async def _play_scores(matcher: Matcher, user_id: int):
+async def _play_scores(user_id: int):
     from .data_source import PlayScore, compute_play_rating, load_catalog
 
     catalog = load_catalog()
