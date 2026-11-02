@@ -11,6 +11,7 @@ from nonebot import get_driver
 from nonebot.adapters.qq import Message, MessageSegment
 from nonebot.log import logger
 from nonebot.matcher import Matcher
+from arclet.alconna import AllParam
 from nonebot_plugin_alconna import Alconna, Args, Arparma, on_alconna
 
 from . import api, binds
@@ -120,7 +121,7 @@ async def _resolve_song(matcher: Matcher, query: str):
 # ---------------------------------------------------------------- bind/unbind
 
 bind_matcher = on_alconna(
-    Alconna("bind", Args["query", Any]), priority=5, block=True
+    Alconna("bind", Args["query", AllParam]), priority=5, block=True
 )
 unbind_matcher = on_alconna(Alconna("unbind"), priority=5, block=True)
 unbind_cn_matcher = on_alconna(Alconna("解绑"), priority=5, block=True)
@@ -253,7 +254,7 @@ async def completion_handler(matcher: Matcher, event, arparma: Arparma):
 # ---------------------------------------------------------------------- score
 
 score_matcher = on_alconna(
-    Alconna("score", Args["query", Any]), priority=5, block=True
+    Alconna("score", Args["query", AllParam]), priority=5, block=True
 )
 
 
@@ -296,7 +297,7 @@ async def score_handler(matcher: Matcher, event, arparma: Arparma):
 # ------------------------------------------------------------------------ his
 
 his_matcher = on_alconna(
-    Alconna("his", Args["query", Any]), priority=5, block=True
+    Alconna("his", Args["query", AllParam]), priority=5, block=True
 )
 
 
@@ -341,7 +342,7 @@ async def his_handler(matcher: Matcher, event, arparma: Arparma):
 # ------------------------------------------------------------------ info/rand
 
 info_matcher = on_alconna(
-    Alconna("info", Args["query", Any]), priority=5, block=True
+    Alconna("info", Args["query", AllParam]), priority=5, block=True
 )
 rand_matcher = on_alconna(Alconna("rand"), priority=5, block=True)
 

@@ -25,6 +25,6 @@ jobs:
           platforms: linux/amd64
           push: true
           provenance: false
-          tags: xiaoxinqwqovo/arcaea-bot:1.0.6
+          tags: xiaoxinqwqovo/arcaea-bot:1.0.7
           cache-from: type=gha
           cache-to: type=gha,mode=max
