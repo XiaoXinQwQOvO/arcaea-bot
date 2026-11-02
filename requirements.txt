@@ -1,4 +1,4 @@
-nonebot2[websockets]>=2.3.3
+nonebot2[fastapi,websockets]>=2.3.3
 nonebot-adapter-qq>=1.6.0
 nonebot-plugin-alconna>=0.56.0
 httpx>=0.27
