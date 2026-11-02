@@ -4,8 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from nonebot import get_plugin_config
-from pydantic import BaseModel
+import os
 
 BASE_DIR = Path(__file__).resolve().parent
 RESOURCE_PATH = BASE_DIR / "resources"
@@ -15,30 +14,9 @@ RANK_PATH = RESOURCE_PATH / "rank"
 BG_PATH = RESOURCE_PATH / "bg"
 
 
-class Config(BaseModel):
-    arcaea_api_base: str = ""
-    arcaea_api_token: str = ""
-    arcaea_api_timeout: float = 60.0
-    arcaea_bind_db: str = str(BASE_DIR / "data" / "binds.db")
-    arcaea_b50_count: int = 50
-    arcaea_score_top_n: int = 10
-    arcaea_completion_min: float = 9.0
-    arcaea_completion_max: float = 12.0
-    arcaea_completion_columns: int = 8
-    arcaea_completion_show_no_record: bool = True
-    arcaea_completion_max_charts: int = 2200
-    arcaea_image_quality: int = 90
-    arcaea_output_width: int = 1280
-    arcaea_max_image_height: int = 18000
-    arcaea_background: str = "s9.webp"
-    arcaea_render_concurrency: int = 2
-
-
-_config = get_plugin_config(Config)
-
-
 def get(key: str, default=None):
-    return getattr(_config, f"arcaea_{key}", default)
+    value = os.getenv(f"ARCAEA_{key.upper()}")
+    return default if value is None else value
 
 
 def as_int(key, default, minimum=None, maximum=None):

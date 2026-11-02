@@ -30,7 +30,11 @@ if _appid and _secret and not os.getenv("QQ_BOTS"):
 nonebot.init()
 driver = nonebot.get_driver()
 driver.register_adapter(QQAdapter)
-nonebot.load_plugin("arcaea")
+try:
+    nonebot.load_plugin("arcaea")
+except Exception:
+    logger.exception("arcaea 插件加载失败")
+    raise
 
 def _log_public_ip() -> None:
     for url in (
