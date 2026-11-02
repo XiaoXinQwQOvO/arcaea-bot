@@ -434,3 +434,33 @@ async def trend_handler(matcher: Matcher, event):
         f"Arcaea PTT 轨迹 · {user['info'].name}\n记录 {len(history)} 条",
         image,
     )
+
+
+# ------------------------------------------------- 宽松正则触发（含 @ / 无斜杠）
+def _add_shortcut(matcher, pattern: str, command: str, arguments=(), compact=True):
+    matcher.shortcut(
+        pattern,
+        command=command,
+        arguments=list(arguments),
+        prefix=False,
+        compact=compact,
+    )
+
+
+_M = r"(?:<@[^>]+>\s*)?"
+_add_shortcut(bind_matcher, _M + r"[/]?bind\s+(?P<query>.+)", "bind", ["{query}"])
+_add_shortcut(unbind_matcher, _M + r"[/]?unbind", "unbind", compact=False)
+_add_shortcut(unbind_cn_matcher, _M + r"[/]?解绑", "解绑", compact=False)
+_add_shortcut(b50_matcher, _M + r"[/]?(?:b50|B50)", "b50", compact=False)
+_add_shortcut(
+    completion_matcher,
+    _M + r"[/]?完成表(?:\s+(?P<lower>\d+(?:\.\d+)?))?(?:\s+(?P<upper>\d+(?:\.\d+)?))?",
+    "完成表",
+    ["{lower}", "{upper}"],
+)
+_add_shortcut(score_matcher, _M + r"[/]?score\s+(?P<query>.+)", "score", ["{query}"])
+_add_shortcut(his_matcher, _M + r"[/]?his\s+(?P<query>.+)", "his", ["{query}"])
+_add_shortcut(info_matcher, _M + r"[/]?info\s+(?P<query>.+)", "info", ["{query}"])
+_add_shortcut(rand_matcher, _M + r"[/]?(?:rand|随机)", "rand", compact=False)
+_add_shortcut(recent_matcher, _M + r"[/]?(?:recent|最近)", "recent", compact=False)
+_add_shortcut(trend_matcher, _M + r"[/]?(?:trend|推分)", "trend", compact=False)
