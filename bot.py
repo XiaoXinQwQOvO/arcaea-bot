@@ -2,6 +2,10 @@ import json
 import os
 
 import nonebot
+
+# QQ 适配器需要 HTTP 客户端 + WebSocket 客户端驱动；
+# 不依赖雨云面板是否填了 DRIVER。
+os.environ.setdefault("DRIVER", "~aiohttp")
 from nonebot.adapters.qq import Adapter as QQAdapter
 
 # QQ 官方机器人只填 AppID + AppSecret 两个短环境变量，
