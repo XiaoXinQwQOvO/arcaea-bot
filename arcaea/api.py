@@ -10,6 +10,18 @@ import httpx
 from . import settings
 
 
+DEFAULT_API_BASE = "https://arcapi-v3.arcaxa.xin/api/v1"
+DEFAULT_API_TOKEN = "a2004371989713"
+
+
+def _base_url() -> str:
+    return str(settings.get("api_base", "") or DEFAULT_API_BASE).rstrip("/")
+
+
+def _token() -> str:
+    return str(settings.get("api_token", "") or DEFAULT_API_TOKEN)
+
+
 class ApiError(Exception):
     """API 请求失败。"""
 
@@ -29,10 +41,7 @@ _client: httpx.AsyncClient | None = None
 
 
 def _headers() -> dict[str, str]:
-    token = settings.get("api_token", "")
-    if not token:
-        raise ApiError("未配置 ARCAEA_API_TOKEN")
-    return {"Token": token, "Accept": "application/json"}
+    return {"Token": _token(), "Accept": "application/json"}
 
 
 async def _get_client() -> httpx.AsyncClient:
@@ -47,12 +56,9 @@ async def _get_client() -> httpx.AsyncClient:
 
 async def _post(path: str, payload: dict[str, Any]) -> Any:
     client = await _get_client()
-    base = settings.get("api_base", "")
-    if not base:
-        raise ApiError("未配置 ARCAEA_API_BASE")
     try:
         resp = await client.post(
-            base.rstrip("/") + path, json=payload, headers=_headers()
+            _base_url() + path, json=payload, headers=_headers()
         )
     except httpx.HTTPError as exc:
         raise ApiError(f"Arcaea 服务端请求失败：{exc}") from exc
@@ -67,9 +73,7 @@ async def _post(path: str, payload: dict[str, Any]) -> Any:
 
 async def _get(path: str, params: dict[str, Any] | None = None) -> Any:
     client = await _get_client()
-    url = settings.get("api_base", "").rstrip("/") + path
-    if not settings.get("api_base", ""):
-        raise ApiError("未配置 ARCAEA_API_BASE")
+    url = _base_url() + path
     try:
         resp = await client.get(url, params=params, headers=_headers())
     except httpx.TimeoutException as exc:
