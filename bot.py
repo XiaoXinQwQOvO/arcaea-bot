@@ -27,7 +27,11 @@ if _appid and _secret and not os.getenv("QQ_BOTS"):
         separators=(",", ":"),
     )
 
-nonebot.init()
+nonebot.init(
+    driver="~aiohttp",
+    host=os.getenv("HOST", "0.0.0.0"),
+    port=int(os.getenv("PORT", "443")),
+)
 driver = nonebot.get_driver()
 driver.register_adapter(QQAdapter)
 try:
