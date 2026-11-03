@@ -14,7 +14,7 @@ from nonebot.matcher import Matcher
 from arclet.alconna import AllParam
 from nonebot_plugin_alconna import Alconna, Args, Arparma, on_alconna
 
-from . import api, binds, settings
+from . import api, binds, settings, webhook
 from .data_source import (
     ArcaeaError,
     Leaderboard,
@@ -34,6 +34,7 @@ driver = get_driver()
 driver.on_startup(_engine.start)
 driver.on_shutdown(_engine.close)
 driver.on_shutdown(api.close_client)
+webhook.register(driver)
 
 
 def _send(matcher: Matcher, caption: str, image: bytes):
