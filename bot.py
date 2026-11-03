@@ -1,15 +1,16 @@
 import json
 import os
 
+# 必须在 import nonebot 之前设置：平台上残留的 DRIVER 空值/旧值
+# 会让 nonebot 在导入阶段就落到 NoneDriver，之后再改都无效。
+os.environ["DRIVER"] = "~aiohttp"
+os.environ.setdefault("HOST", "0.0.0.0")
+os.environ.setdefault("PORT", "443")
+
 import nonebot
 import httpx
-from nonebot.log import logger
-
-# QQ 适配器需要 HTTP 客户端 + WebSocket 客户端驱动；
-# 不依赖雨云面板是否填了 DRIVER。
-if not os.getenv("DRIVER", "").strip():
-    os.environ["DRIVER"] = "~aiohttp"
 from nonebot.adapters.qq import Adapter as QQAdapter
+from nonebot.log import logger
 
 # QQ 官方机器人只填 AppID + AppSecret 两个短环境变量，
 # 避免雨云环境变量值 100 字符限制。
@@ -27,11 +28,7 @@ if _appid and _secret and not os.getenv("QQ_BOTS"):
         separators=(",", ":"),
     )
 
-nonebot.init(
-    driver="~aiohttp",
-    host=os.getenv("HOST", "0.0.0.0"),
-    port=int(os.getenv("PORT", "443")),
-)
+nonebot.init()
 driver = nonebot.get_driver()
 driver.register_adapter(QQAdapter)
 try:
@@ -40,6 +37,7 @@ except Exception:
     logger.exception("arcaea 插件加载失败")
     raise
 
+
 def _log_public_ip() -> None:
     for url in (
         "https://api.ipify.org",
@@ -47,7 +45,7 @@ def _log_public_ip() -> None:
         "https://ipv4.icanhazip.com",
     ):
         try:
-            ip = httpx.get(url, timeout=5, trust_env=False).text.strip()
+            ip = httpx.get(url, timeout=5, trust_env=True).text.strip()
         except Exception:
             continue
         if ip:
