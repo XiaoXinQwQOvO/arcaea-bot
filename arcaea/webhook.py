@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 import json
+import os
 from typing import Any
 
 import nonebot
 from nonebot.adapters.qq import Bot, Message, MessageSegment
 from nonebot.log import logger
 
-from . import settings
 
 
 def _format_alert(payload: Any) -> str:
@@ -32,7 +32,7 @@ def _format_alert(payload: Any) -> str:
 
 
 async def _forward_to_qq(text: str) -> None:
-    group = str(settings.get("webhook_qq_group", "") or "").strip()
+    group = str(os.getenv("WEBHOOK_QQ_GROUP", "") or "").strip()
     if not group:
         return
     for bot in nonebot.get_bots().values():
@@ -50,7 +50,7 @@ async def _forward_to_qq(text: str) -> None:
 async def _handle(request):
     from aiohttp import web
 
-    expected = str(settings.get("webhook_token", "") or "").strip()
+    expected = str(os.getenv("WEBHOOK_TOKEN", "") or "").strip()
     if not expected:
         return web.json_response(
             {"error": "WEBHOOK_TOKEN 未配置"}, status=503
@@ -83,15 +83,30 @@ async def _health(request):
     return web.json_response({"ok": True})
 
 
-def register(driver) -> None:
-    """把 webhook 路由挂到 aiohttp driver 的 server_app 上。"""
-    app = getattr(driver, "server_app", None)
-    if app is None or not hasattr(app, "router"):
-        logger.warning(
-            "当前驱动没有 HTTP server（DRIVER 不是 ~aiohttp），webhook 未启用"
-        )
-        return
+_runner = None
+
+
+async def start() -> None:
+    """独立启动 webhook HTTP 服务（不依赖 nonebot driver）。"""
+    global _runner
+    from aiohttp import web
+
+    host = os.getenv("WEBHOOK_HOST", "0.0.0.0")
+    port = int(os.getenv("WEBHOOK_PORT", "443"))
+    app = web.Application()
     app.router.add_post("/webhook", _handle)
     app.router.add_post("/webhook/{token}", _handle)
     app.router.add_get("/webhook/health", _health)
-    logger.info("OpenUptime webhook 已注册: POST /webhook/{token}")
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, host=host, port=port)
+    await site.start()
+    _runner = runner
+    logger.info(f"OpenUptime webhook 监听 {host}:{port}")
+
+
+async def stop() -> None:
+    global _runner
+    if _runner is not None:
+        await _runner.cleanup()
+        _runner = None

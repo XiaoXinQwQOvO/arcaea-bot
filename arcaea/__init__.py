@@ -35,10 +35,11 @@ driver.on_startup(_engine.start)
 driver.on_shutdown(_engine.close)
 driver.on_shutdown(api.close_client)
 async def _register_webhook():
-    webhook.register(get_driver())
+    await webhook.start()
 
 
 driver.on_startup(_register_webhook)
+driver.on_shutdown(webhook.stop)
 
 
 def _send(matcher: Matcher, caption: str, image: bytes):

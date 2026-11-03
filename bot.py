@@ -5,7 +5,7 @@ import os
 # 会让 nonebot 在导入阶段就落到 NoneDriver，之后再改都无效。
 os.environ["DRIVER"] = "~aiohttp"
 os.environ.setdefault("HOST", "0.0.0.0")
-os.environ.setdefault("PORT", "443")
+os.environ["PORT"] = "8443"
 
 import nonebot
 import httpx
