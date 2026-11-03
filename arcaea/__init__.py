@@ -131,7 +131,13 @@ async def _resolve_song(matcher: Matcher, query: str):
 # ---------------------------------------------------------------- bind/unbind
 
 async def _not_banned(event) -> bool:
-    return not await binds.is_banned(event.get_user_id())
+    try:
+        user_id = event.get_user_id()
+    except Exception:
+        return False
+    if not user_id:
+        return False
+    return not await binds.is_banned(str(user_id))
 
 
 def _oa(*args, **kwargs):
