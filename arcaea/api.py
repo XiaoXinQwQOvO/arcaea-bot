@@ -40,7 +40,7 @@ async def _get_client() -> httpx.AsyncClient:
     if _client is None or _client.is_closed:
         _client = httpx.AsyncClient(
             timeout=httpx.Timeout(settings.as_float("api_timeout", 60.0), connect=10.0),
-            trust_env=False,
+            trust_env=True,
         )
     return _client
 
@@ -108,19 +108,24 @@ async def fetch_leaderboard(song_id: str, difficulty: int, limit: int = 10) -> l
     from .data_source import LeaderboardEntry
 
     raw = await _get(f"/songs/{song_id}/{difficulty}/rank", {"limit": limit})
-    items = raw if isinstance(raw, list) else raw.get("data", [])
-    return [
-        LeaderboardEntry(
-            rank=index,
-            user_id=int(item["user_id"]),
-            name=str(item.get("user", {}).get("name") or item.get("name") or "未知"),
-            score=int(item["score"]),
-            rating=float(item.get("rating") or 0.0),
-            time_played=int(item.get("time_played") or 0),
-            clear_type=int(item.get("clear_type") or 0),
+    if isinstance(raw, dict):
+        raw = raw.get("data") or []
+    entries = []
+    for index, item in enumerate(raw or [], start=1):
+        if not isinstance(item, dict):
+            continue
+        entries.append(
+            LeaderboardEntry(
+                rank=int(item.get("rank") or index),
+                user_id=int(item.get("user_id") or 0),
+                name=str(item.get("name") or "未知"),
+                score=int(item.get("score") or 0),
+                rating=float(item.get("rating") or 0.0),
+                time_played=int(item.get("time_played") or 0),
+                clear_type=int(item.get("clear_type") or item.get("best_clear_type") or 0),
+            )
         )
-        for index, item in enumerate(items, start=1)
-    ]
+    return entries
 
 
 async def fetch_recent(user_id: int):
@@ -188,15 +193,22 @@ async def fetch_score_history(user_id: int, chart, limit: int = 1000):
 async def fetch_rating_history(user_id: int, duration: int | None = None):
     params = {"duration": duration} if duration else {}
     raw = await _get(f"/users/{user_id}/rating", params)
-    items = raw.get("data", []) if isinstance(raw, dict) else raw
+    items = raw.get("data", []) if isinstance(raw, dict) else (raw or [])
     history = []
     for item in items:
-        ts, value = int(item[0]), float(item[1])
+        if isinstance(item, dict):
+            ts = int(item.get("time") or 0)
+            value = float(item.get("rating_ptt") or 0.0)
+        else:
+            ts, value = int(item[0]), float(item[1])
         if ts <= 0:
             continue
+        if ts < 10**11:
+            ts *= 1000
         if value >= 20:
             value /= 100
         history.append((ts, value))
+    history.sort(key=lambda point: point[0])
     return history
 
 

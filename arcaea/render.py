@@ -20,6 +20,7 @@ from typing import ClassVar
 from nonebot.log import logger
 
 from .settings import (
+    BASE_DIR,
     BG_PATH,
     JACKET_PATH,
     RANK_PATH,
@@ -223,6 +224,14 @@ async def _render_via_service(template: str, context: dict, width: int) -> bytes
         quality=get_image_quality(),
         max_bytes=MAX_IMAGE_BYTES,
     )
+
+
+TREND_WIDTH = 1600
+TREND_HEIGHT = 620
+TREND_LEFT = 90
+TREND_RIGHT = 50
+TREND_TOP = 40
+TREND_BOTTOM = 70
 
 
 def _format_trend_date(timestamp_ms: int) -> str:

@@ -17,6 +17,7 @@ from nonebot_plugin_alconna import Alconna, Args, Arparma, on_alconna
 from . import api, binds, settings
 from .data_source import (
     ArcaeaError,
+    Leaderboard,
     build_b50_data,
     build_completion_data,
     fmt_floor,
@@ -285,7 +286,8 @@ async def score_handler(matcher: Matcher, event, arparma: Arparma):
         entries = await api.fetch_leaderboard(
             chart.song_id, chart.difficulty_index, settings.get_score_top_n()
         )
-        image = await _render("score", user["info"], chart, entries)
+        board = Leaderboard(entries, len(entries), None, None)
+        image = await _render("score", user["info"], chart, board)
     except (api.ApiError, ArcaeaError, RenderError) as exc:
         await matcher.finish(str(exc))
     await _send(
