@@ -17,6 +17,9 @@ def _connect() -> sqlite3.Connection:
         "create table if not exists binds("
         "qq_id text primary key, user_id int, user_code text, name text)"
     )
+    conn.execute(
+        "create table if not exists bans(qq_id text primary key, reason text)"
+    )
     return conn
 
 
@@ -82,3 +85,30 @@ async def get_bind_by_code(user_code: str) -> dict[str, Any] | None:
         )
 
     return await asyncio.to_thread(_run)
+
+
+async def is_banned(qq_id: str) -> bool:
+    import asyncio
+
+    def _run() -> bool:
+        with _connect() as conn:
+            row = conn.execute(
+                "select 1 from bans where qq_id = ?", (qq_id,)
+            ).fetchone()
+        return row is not None
+
+    return await asyncio.to_thread(_run)
+
+
+async def add_ban(qq_id: str, reason: str = "") -> None:
+    import asyncio
+
+    def _run() -> None:
+        with _connect() as conn:
+            conn.execute(
+                "insert or replace into bans(qq_id, reason) values(?,?)",
+                (qq_id, reason),
+            )
+            conn.commit()
+
+    await asyncio.to_thread(_run)

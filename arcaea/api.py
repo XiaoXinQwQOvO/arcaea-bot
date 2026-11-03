@@ -45,6 +45,26 @@ async def _get_client() -> httpx.AsyncClient:
     return _client
 
 
+async def _post(path: str, payload: dict[str, Any]) -> Any:
+    client = await _get_client()
+    base = settings.get("api_base", "")
+    if not base:
+        raise ApiError("未配置 ARCAEA_API_BASE")
+    try:
+        resp = await client.post(
+            base.rstrip("/") + path, json=payload, headers=_headers()
+        )
+    except httpx.HTTPError as exc:
+        raise ApiError(f"Arcaea 服务端请求失败：{exc}") from exc
+    try:
+        data = resp.json()
+    except ValueError as exc:
+        raise ApiError(f"服务端返回非 JSON（HTTP {resp.status_code}）") from exc
+    if resp.status_code >= 400 or data.get("code", -1) != 0:
+        raise ApiError(f"服务端返回 {resp.status_code}：{data.get('message') or data}")
+    return data.get("data")
+
+
 async def _get(path: str, params: dict[str, Any] | None = None) -> Any:
     client = await _get_client()
     url = settings.get("api_base", "").rstrip("/") + path
@@ -217,3 +237,15 @@ async def close_client() -> None:
     if _client is not None and not _client.is_closed:
         await _client.aclose()
     _client = None
+
+
+async def bind_request(user_code: str, qq_id: str):
+    return await _post("/bot/bind/request", {"user_code": user_code, "qq_id": qq_id})
+
+
+async def bind_status(user_code: str, qq_id: str):
+    return await _get("/bot/bind/status", {"user_code": user_code, "qq_id": qq_id})
+
+
+async def bind_remove(user_code: str, qq_id: str):
+    return await _post("/bot/bind/remove", {"user_code": user_code, "qq_id": qq_id})

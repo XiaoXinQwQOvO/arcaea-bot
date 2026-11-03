@@ -11,6 +11,7 @@ from nonebot import get_driver
 from nonebot.adapters.qq import Message, MessageSegment
 from nonebot.log import logger
 from nonebot.matcher import Matcher
+from nonebot.rule import Rule
 from arclet.alconna import AllParam
 from nonebot_plugin_alconna import Alconna, Args, Arparma, on_alconna
 
@@ -129,37 +130,92 @@ async def _resolve_song(matcher: Matcher, query: str):
 
 # ---------------------------------------------------------------- bind/unbind
 
-bind_matcher = on_alconna(
+async def _not_banned(event) -> bool:
+    return not await binds.is_banned(event.get_user_id())
+
+
+def _oa(*args, **kwargs):
+    kwargs.setdefault("rule", Rule(_not_banned))
+    return on_alconna(*args, **kwargs)
+
+
+bind_matcher = _oa(
     Alconna("bind", Args["query", AllParam]), priority=5, block=True
 )
-unbind_matcher = on_alconna(Alconna("unbind"), priority=5, block=True)
-unbind_cn_matcher = on_alconna(Alconna("解绑"), priority=5, block=True)
+unbind_matcher = _oa(Alconna("unbind"), priority=5, block=True)
+unbind_cn_matcher = _oa(Alconna("解绑"), priority=5, block=True)
 
 
 @bind_matcher.handle()
-async def bind_handler(matcher: Matcher, event, arparma: Arparma):
+async def bind_handler(matcher: Matcher, bot, event, arparma: Arparma):
     raw = _text(arparma, "query")
-    matched = re.match(r"^(\d[\d\s]{8,})\s+(.+)$", raw)
-    if not matched:
-        await matcher.finish("用法：/bind <9位好友码> <Arcaea用户名>")
-    code = re.sub(r"\D", "", matched.group(1)).zfill(9)
-    name = matched.group(2).strip()
-    if not code or not name:
-        await matcher.finish("用法：/bind <9位好友码> <Arcaea用户名>")
+    code = "".join(ch for ch in raw if ch.isdigit())
+    if len(code) < 9:
+        await matcher.finish("用法：/bind <9位好友码>")
+    code = code.zfill(9)
+    qq_id = event.get_user_id()
     try:
-        info = await api.fetch_user_by_code(code, expected_name=name)
+        data = await api.bind_request(code, qq_id) or {}
     except api.ApiError as exc:
         await matcher.finish(str(exc))
-    qq_id = event.get_user_id()
-    owner = await binds.get_bind_by_code(info.user_code)
-    if owner is not None and owner["qq_id"] != qq_id:
+    status = data.get("status")
+    name = str(data.get("name") or "")
+    if status == "email_sent":
+        asyncio.create_task(_poll_bind(bot, event, code, qq_id))
+        await matcher.finish("绑定邮件已发送到对应邮箱，请查收。")
+    if status == "already_bound_same":
+        try:
+            info = await api.fetch_user_by_code(code)
+            await binds.set_bind(qq_id, info.user_id, code, info.name)
+        except Exception:
+            pass
+        await matcher.finish(f"你已经绑定了该账号，用户名：{name}")
+    if status == "bound_by_other":
         await matcher.finish(
-            f"好友码 {info.user_code} 已被其他用户绑定，请原绑定者先 /解绑。"
+            f"该好友码已被其他 QQ 绑定（用户名：{name}），请原绑定者先解绑。"
         )
-    await binds.set_bind(qq_id, info.user_id, info.user_code, info.name)
-    await matcher.finish(
-        f"绑定成功！\nArcaea：{info.name}\n好友码：{info.user_code}"
-    )
+    if status == "banned":
+        await binds.add_ban(qq_id, "bind_attempts")
+        await matcher.finish("尝试次数过多，已禁止使用本插件。")
+    if status == "no_email":
+        await matcher.finish("该账号没有绑定邮箱，无法完成验证。")
+    await matcher.finish("绑定请求失败，请稍后重试。")
+
+
+async def _poll_bind(bot, event, code: str, qq_id: str) -> None:
+    for _ in range(360):
+        await asyncio.sleep(5)
+        try:
+            data = await api.bind_status(code, qq_id) or {}
+        except Exception:
+            continue
+        status = data.get("status")
+        if status == "banned":
+            await binds.add_ban(qq_id, "bind_attempts")
+            return
+        if status != "verified":
+            continue
+        name = str(data.get("name") or "")
+        try:
+            info = await api.fetch_user_by_code(code)
+            await binds.set_bind(qq_id, info.user_id, code, info.name)
+        except Exception:
+            await binds.set_bind(qq_id, 0, code, name)
+        text = f"绑定成功，用户名：{name}"
+        try:
+            if getattr(event, "group_openid", None):
+                await bot.send_to_group(
+                    group_openid=event.group_openid,
+                    message=Message(MessageSegment.text(text)),
+                )
+            elif getattr(event, "user_openid", None):
+                await bot.send_to_c2c(
+                    openid=event.user_openid,
+                    message=Message(MessageSegment.text(text)),
+                )
+        except Exception as exc:
+            logger.warning(f"绑定成功主动消息失败: {exc}")
+        return
 
 
 @unbind_matcher.handle()
@@ -168,13 +224,17 @@ async def unbind_handler(matcher: Matcher, event):
     bind = await binds.get_bind(event.get_user_id())
     if bind is None:
         await matcher.finish("当前还没有绑定 Arcaea 账号。")
+    try:
+        await api.bind_remove(bind["user_code"], event.get_user_id())
+    except Exception:
+        pass
     await binds.del_bind(event.get_user_id())
     await matcher.finish("已解除 Arcaea 账号绑定。")
 
 
 # ------------------------------------------------------------------------ b50
 
-b50_matcher = on_alconna(Alconna("b50"), priority=5, block=True)
+b50_matcher = _oa(Alconna("b50"), priority=5, block=True)
 
 
 @b50_matcher.handle()
@@ -214,7 +274,7 @@ async def _render(template: str, *args) -> bytes:
 
 # ------------------------------------------------------------------- 完成表
 
-completion_matcher = on_alconna(
+completion_matcher = _oa(
     Alconna("完成表", Args["lower?", float]["upper?", float]),
     priority=5,
     block=True,
@@ -262,7 +322,7 @@ async def completion_handler(matcher: Matcher, event, arparma: Arparma):
 
 # ---------------------------------------------------------------------- score
 
-score_matcher = on_alconna(
+score_matcher = _oa(
     Alconna("score", Args["query", AllParam]), priority=5, block=True
 )
 
@@ -306,7 +366,7 @@ async def score_handler(matcher: Matcher, event, arparma: Arparma):
 
 # ------------------------------------------------------------------------ his
 
-his_matcher = on_alconna(
+his_matcher = _oa(
     Alconna("his", Args["query", AllParam]), priority=5, block=True
 )
 
@@ -351,10 +411,10 @@ async def his_handler(matcher: Matcher, event, arparma: Arparma):
 
 # ------------------------------------------------------------------ info/rand
 
-info_matcher = on_alconna(
+info_matcher = _oa(
     Alconna("info", Args["query", AllParam]), priority=5, block=True
 )
-rand_matcher = on_alconna(Alconna("rand"), priority=5, block=True)
+rand_matcher = _oa(Alconna("rand"), priority=5, block=True)
 
 
 @info_matcher.handle()
@@ -403,7 +463,7 @@ async def rand_handler(matcher: Matcher):
 
 # --------------------------------------------------------------------- recent
 
-recent_matcher = on_alconna(Alconna("recent"), priority=5, block=True)
+recent_matcher = _oa(Alconna("recent"), priority=5, block=True)
 
 
 @recent_matcher.handle()
@@ -426,7 +486,7 @@ async def recent_handler(matcher: Matcher, event):
 
 # ---------------------------------------------------------------------- trend
 
-trend_matcher = on_alconna(Alconna("trend"), priority=5, block=True)
+trend_matcher = _oa(Alconna("trend"), priority=5, block=True)
 
 
 @trend_matcher.handle()
