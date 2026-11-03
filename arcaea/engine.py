@@ -65,14 +65,18 @@ class RenderService:
         self._sandbox = sandbox
         self._playwright: Playwright | None = None
         self._browser: Browser | None = None
+        self._start_lock = asyncio.Lock()
 
     # ---------------------------------------------------------------- 生命周期
 
     async def start(self) -> None:
-        if not self.template_dir.is_dir():
-            raise RenderError(f"模板目录不存在：{self.template_dir}")
-        self._playwright = await async_playwright().start()
-        await self._launch_browser()
+        async with self._start_lock:
+            if self._browser is not None and self._browser.is_connected():
+                return
+            if not self.template_dir.is_dir():
+                raise RenderError(f"模板目录不存在：{self.template_dir}")
+            self._playwright = await async_playwright().start()
+            await self._launch_browser()
 
     async def close(self) -> None:
         browser, playwright = self._browser, self._playwright
@@ -133,6 +137,7 @@ class RenderService:
         device_scale_factor: int = 1,
         full_page: bool = True,
     ) -> bytes:
+        await self.start()
         template_name = self.template_name(template)
         html = self._render_html(template_name, context)
 
